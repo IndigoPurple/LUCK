@@ -37,29 +37,36 @@ def image_read(train_c_path, train_m_path, train_rgb_path):
 
     return inp_list, gt_m_list, gt_list, train_c_path
 
+# def read_single_image(img_path):
+#
+#     return imageio.imread(img_path)
+
 class load_data(Dataset):
     """Loads the Data."""
 
     def __init__(self, train_c_path, train_m_path, train_rgb_path, training=True):
 
         self.training = training
-        if self.training:
-            print('\n...... Train files loading\n')
-            self.inp_list, self.gt_m_list, self.gt_list, self.train_c_path = image_read(train_c_path, train_m_path, train_rgb_path)
-            print('\nTrain files loaded ......\n')
-        else:
-            print('\n...... Test files loading\n')
-            self.inp_list, self.gt_m_list, self.gt_list, self.train_c_path = image_read(train_c_path, train_m_path, train_rgb_path)
-            print('\nTest files loaded ......\n')
+        self.train_c_path = train_c_path
+        self.train_m_path = train_m_path
+        self.train_rgb_path = train_rgb_path
+        # if self.training:
+        #     print('\n...... Train files loading\n')
+        #     self.inp_list, self.gt_m_list, self.gt_list, self.train_c_path = image_read(train_c_path, train_m_path, train_rgb_path)
+        #     print('\nTrain files loaded ......\n')
+        # else:
+        #     print('\n...... Test files loading\n')
+        #     self.inp_list, self.gt_m_list, self.gt_list, self.train_c_path = image_read(train_c_path, train_m_path, train_rgb_path)
+        #     print('\nTest files loaded ......\n')
 
     def __len__(self):
-        return len(self.gt_list)
+        return len(self.train_rgb_path)
 
     def __getitem__(self, idx):
 
-        gt_rgb_image = self.gt_list[idx]
-        gt_m_image = self.gt_m_list[idx]
-        inp_raw_image = self.inp_list[idx]
+        gt_rgb_image = imageio.imread(self.train_rgb_path[idx])
+        gt_m_image = imageio.imread(self.train_m_path[idx])
+        inp_raw_image = imageio.imread(self.train_c_path[idx])
 
         img_num = int(self.train_c_path[idx][-23:-20])
         img_expo = int(self.train_c_path[idx][-8:-4],16)
@@ -134,9 +141,9 @@ def run_test(model, dataloader_test, iteration, save_images_file, save_csv_file,
             ssim2_img = SSIM(rgb_pred, gt_rgb, multichannel=True)
 
             # save test gt and predicted images
-            # imageio.imwrite(os.path.join(save_images_file, '{}_{}_gt.jpg'.format(image_num, iteration)), gt_rgb)
-            # imageio.imwrite(os.path.join(save_images_file,'{}_{}_psnr_{:.4f}_ssim_{:.4f}.jpg'.format(image_num, iteration, psnr2_img,ssim2_img)), rgb_pred)
-            #
+            imageio.imwrite(os.path.join(save_images_file, '{}_{}_gt.jpg'.format(image_num, iteration)), gt_rgb)
+            imageio.imwrite(os.path.join(save_images_file,'{}_{}_psnr_{:.4f}_ssim_{:.4f}.jpg'.format(image_num, iteration, psnr2_img,ssim2_img)), rgb_pred)
+
             # imageio.imwrite(os.path.join(save_images_file, '{}_{}_gt_mono.jpg'.format(image_num, iteration)), gt_mono)
             # imageio.imwrite(os.path.join(save_images_file,'{}_{}_psnr_{:.4f}_ssim_{:.4f}_mono.jpg'.format(image_num, iteration, psnr1_img,ssim1_img)), mono_pred)
 
@@ -172,7 +179,7 @@ if __name__ == '__main__':
     # parser.add_argument('--resolutions', type=str_list, default=['10000_poisson', '30000_poisson', '50000_poisson'])
     # parser.add_argument('--noise_min', type=float, default=0.005)
     # parser.add_argument('--noise_max', type=float, default=0.020)
-    parser.add_argument('--batch_size', type=int, default=24)
+    parser.add_argument('--batch_size', type=int, default=1)
     parser.add_argument('--num_workers', type=int, default=4)
     # parser.add_argument('--aug_rotate', type=eval, default=True, choices=[True, False])
     ## Model architecture
@@ -196,7 +203,7 @@ if __name__ == '__main__':
     metric_average_file = 'result/%s_metric_average.txt' % args.exp_name
     # These are folders
     save_weights_file = 'result/weights'
-    save_images_file = 'result/images'
+    save_images_file = 'result/images/%s' % args.exp_name
     save_csv_file = 'result/csv_files'
 
     if not os.path.exists(save_weights_file):
@@ -295,9 +302,9 @@ if __name__ == '__main__':
                 np.savetxt(os.path.join(save_csv_file, '%s_train_curve.csv'%args.exp_name), [p for p in zip(iter_list, iter_LR, loss_list, metrics)], delimiter=',', fmt='%s')
 
             # save checkpoint every 20000 times, make adjustments accordingly
-            if iter_num % 20000 == 0:
+            if iter_num % 100000 == 0:
                 torch.save({'model': model.state_dict()}, os.path.join(save_weights_file, '{}_weights_{}.pth'.format(args.exp_name, iter_num)))
                 print('model saved......')
             # run test during training, more CPU ram and GPU memory needed.
-            if iter_num % 40000 == 0:
+            if iter_num % 100000 == 0:
                 run_test(model, dataloader_test, iter_num, save_images_file, save_csv_file, metric_average_file, exp_name = args.exp_name)
