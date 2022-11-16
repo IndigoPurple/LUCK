@@ -11,7 +11,7 @@ import tqdm
 import random
 import imageio
 
-from network import baseline, abflow
+from network import baseline, abflow, crossnet
 
 # Dataloader define
 def image_read(train_c_path, train_m_path, train_rgb_path):
@@ -234,6 +234,8 @@ if __name__ == '__main__':
         model = baseline()
     elif args.net == 'abflow':
         model = abflow()
+    elif args.net == 'crossnet':
+        model = crossnet()
     print(model)
     # checkpoint = torch.load(save_weights_file + '/weights_120000.pth')
     checkpoint = torch.load(save_weights_file + '/MCR_weights_280000.pth')

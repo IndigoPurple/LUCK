@@ -319,50 +319,30 @@ class crossnet(nn.Module):
     def __init__(self, flownet_type='FlowNet_ori'):
         super(crossnet, self).__init__()
 
-        self.FlowNet = FlowNet(2)
+        self.FlowNet = FlowNet(8)
         self.Backward_warp = Backward_warp()
-        self.Encoder = Encoder(1)
-        self.UNet_decoder_2 = UNet_decoder_2()
+        self.Encoder = Encoder(4)
+        self.UNet_decoder_2 = UNet_decoder_2(out_channel=12)
+        self.up2 = nn.PixelShuffle(2)
 
     def forward(self, color, mono):
-        flow = self.FlowNet(color, mono)
-        warp_mono = self.Backward_warp(mono, flow)
 
         DBLE_color = downshuffle(color, 2)
-        DBLE_mono = downshuffle(warp_mono, 2)
+        DBLE_mono = downshuffle(mono, 2)
 
-        DBLE_out = self.DBLE(DBLE_color, DBLE_mono)
-        RGB_out = self.up2(DBLE_out)
+        flow = self.FlowNet(DBLE_color, DBLE_mono)
 
-        input_img1_LR = buff['input_img1_LR'].cuda()
-        input_img1_SR = input_img1_LR
-        input_img2_HR = buff['input_img2_HR'].cuda()
-        # print(input_img1_LR.shape, input_img2_HR.shape)
-        flow = self.FlowNet(color, mono)
+        color_conv1, color_conv2, color_conv3, color_conv4 = self.Encoder(DBLE_color)
+        mono_conv1, mono_conv2, mono_conv3, mono_conv4 = self.Encoder(DBLE_mono)
 
-        flow_s2_1 = flow_s2['flow_12_1']
-        flow_s2_12_2 = flow_s2['flow_12_2']
-        flow_s2_12_3 = flow_s2['flow_12_3']
-        flow_s2_12_4 = flow_s2['flow_12_4']
+        warp_conv1 = self.Backward_warp(mono_conv1, flow['flow_12_1'])
+        warp_conv2 = self.Backward_warp(mono_conv2, flow['flow_12_2'])
+        warp_conv3 = self.Backward_warp(mono_conv3, flow['flow_12_3'])
+        warp_conv4 = self.Backward_warp(mono_conv4, flow['flow_12_4'])
 
-        SR_conv1, SR_conv2, SR_conv3, SR_conv4 = self.Encoder(color)
-        HR2_conv1, HR2_conv2, HR2_conv3, HR2_conv4 = self.Encoder(warp_img2_HR)
+        decoded = self.UNet_decoder_2(color_conv1, color_conv2, color_conv3, color_conv4, warp_conv1, warp_conv2, warp_conv3, warp_conv4)
 
-        warp_s2_21_conv1 = self.Backward_warp(HR2_conv1, flow['flow_12_1'])
-        warp_s2_21_conv2 = self.Backward_warp(HR2_conv2, flow['flow_12_2'])
-        warp_s2_21_conv3 = self.Backward_warp(HR2_conv3, flow['flow_12_3'])
-        warp_s2_21_conv4 = self.Backward_warp(HR2_conv4, flow['flow_12_4'])
-        refSR_2 = self.UNet_decoder_2(SR_conv1, SR_conv2, SR_conv3, SR_conv4, warp_s2_21_conv1, warp_s2_21_conv2,
-                                      warp_s2_21_conv3, warp_s2_21_conv4)
+        # DBLE_out = self.DBLE(DBLE_color, DBLE_mono)
+        RGB_out = self.up2(decoded)
 
-        # sr_img = np.clip(refSR_2.cpu().numpy(), 0.0, 1.0)
-        # img = Image.fromarray(np.array(sr_img[0].transpose(1, 2, 0) * 255, dtype=np.uint8))
-        # img.save('./result/debug/vimeo_original_0909/sr_img.png')
-        # exit()
-        if flow_visible:
-            return warp_img2_HR, refSR_2, flow_s1, flow_s2
-        else:
-            if require_flow:
-                return warp_img2_HR, refSR_2, flow_s1_12_1
-            else:
-                return warp_img2_HR, refSR_2
+        return RGB_out
