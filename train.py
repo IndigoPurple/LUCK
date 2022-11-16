@@ -165,7 +165,7 @@ if __name__ == '__main__':
     os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
     opt={'base_lr':1e-4}
-    opt['batch_size'] = 1 # default = 24
+    opt['batch_size'] = 24 # default = 24
     opt['iterations'] = 500000
 
     metric_average_file = 'result/metric_average.txt'
@@ -182,12 +182,12 @@ if __name__ == '__main__':
         os.makedirs(save_csv_file)
 
     # load random image paths
-    train_c_path = np.load('./random_path_list/train/train_c_path.npy')[:10]
-    train_m_path = np.load('./random_path_list/train/train_m_path.npy')[:10]
-    train_rgb_path = np.load('./random_path_list/train/train_rgb_path.npy')[:10]
-    test_c_path = np.load('./random_path_list/test/test_c_path.npy')[:10]
-    test_m_path = np.load('./random_path_list/test/test_m_path.npy')[:10]
-    test_rgb_path = np.load('./random_path_list/test/test_rgb_path.npy')[:10]
+    train_c_path = np.load('./random_path_list/train/train_c_path.npy')
+    train_m_path = np.load('./random_path_list/train/train_m_path.npy')
+    train_rgb_path = np.load('./random_path_list/train/train_rgb_path.npy')
+    test_c_path = np.load('./random_path_list/test/test_c_path.npy')
+    test_m_path = np.load('./random_path_list/test/test_m_path.npy')
+    test_rgb_path = np.load('./random_path_list/test/test_rgb_path.npy')
 
     print('train data: %d pairs'%len(train_c_path))
     print('test data: %d pairs'%len(test_c_path))

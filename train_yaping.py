@@ -108,7 +108,7 @@ class load_data(Dataset):
         return inp, gt_mono, gt
 
 # run test during training, more CPU ram and GPU memory needed
-def run_test(model, dataloader_test, iteration, save_images_file, save_csv_file, metric_average_filename):
+def run_test(model, dataloader_test, iteration, save_images_file, save_csv_file, metric_average_filename, exp_name):
     psnr1 = ['PSNR1']
     ssim1 = ['SSIM1']
     psnr2 = ['PSNR2']
@@ -118,18 +118,18 @@ def run_test(model, dataloader_test, iteration, save_images_file, save_csv_file,
         model.eval()
         for image_num, img in tqdm.tqdm(enumerate(dataloader_test)):
             input_color = img[0].to(next(model.parameters()).device)
-            gt_mono = img[1]
+            gt_mono = img[1].to(next(model.parameters()).device)
             gt_rgb = img[2]
-            mono_pred, rgb_pred = model(input_color)
+            rgb_pred = model(input_color, gt_mono)
 
-            mono_pred = (np.clip(mono_pred[0].detach().cpu().numpy().transpose(1, 2, 0), 0, 1) * 255).astype(np.uint8)
+            # mono_pred = (np.clip(mono_pred[0].detach().cpu().numpy().transpose(1, 2, 0), 0, 1) * 255).astype(np.uint8)
             gt_mono = (np.clip(gt_mono[0].detach().cpu().numpy().transpose(1, 2, 0), 0, 1) * 255).astype(np.uint8)
             rgb_pred = (np.clip(rgb_pred[0].detach().cpu().numpy().transpose(1, 2, 0), 0, 1) * 255).astype(np.uint8)
             gt_rgb = (np.clip(gt_rgb[0].detach().cpu().numpy().transpose(1, 2, 0), 0, 1) * 255).astype(np.uint8)
 
 
-            psnr1_img = PSNR(mono_pred, gt_mono)
-            ssim1_img = SSIM(mono_pred, gt_mono, multichannel=True)
+            # psnr1_img = PSNR(mono_pred, gt_mono)
+            # ssim1_img = SSIM(mono_pred, gt_mono, multichannel=True)
             psnr2_img = PSNR(rgb_pred, gt_rgb)
             ssim2_img = SSIM(rgb_pred, gt_rgb, multichannel=True)
 
@@ -140,22 +140,22 @@ def run_test(model, dataloader_test, iteration, save_images_file, save_csv_file,
             # imageio.imwrite(os.path.join(save_images_file, '{}_{}_gt_mono.jpg'.format(image_num, iteration)), gt_mono)
             # imageio.imwrite(os.path.join(save_images_file,'{}_{}_psnr_{:.4f}_ssim_{:.4f}_mono.jpg'.format(image_num, iteration, psnr1_img,ssim1_img)), mono_pred)
 
-            psnr1.append(psnr1_img)
-            ssim1.append(ssim1_img)
+            # psnr1.append(psnr1_img)
+            # ssim1.append(ssim1_img)
             psnr2.append(psnr2_img)
             ssim2.append(ssim2_img)
 
-    np.savetxt(os.path.join(save_csv_file, 'Metrics_iter_{}.csv'.format(iteration)),
-               [p for p in zip(psnr1, ssim1, psnr2, ssim2)], delimiter=',', fmt='%s')
+    np.savetxt(os.path.join(save_csv_file, '%s_Metrics_iter_{}.csv'.format(exp_name, iteration)),
+               [p for p in zip(psnr2, ssim2)], delimiter=',', fmt='%s')
 
-    psnr1_avg = sum(psnr1[1:]) / len(psnr1[1:])
-    ssim1_avg = sum(ssim1[1:]) / len(ssim1[1:])
+    # psnr1_avg = sum(psnr1[1:]) / len(psnr1[1:])
+    # ssim1_avg = sum(ssim1[1:]) / len(ssim1[1:])
     psnr2_avg = sum(psnr2[1:]) / len(psnr2[1:])
     ssim2_avg = sum(ssim2[1:]) / len(ssim2[1:])
 
     # save test metrics
     f = open(metric_average_filename, 'a')
-    f.write('-- psnr1_avg: {}, ssim1_avg: {},psnr2_avg: {}, ssim2_avg: {} iter: {}\n'.format(psnr1_avg, ssim1_avg,psnr2_avg, ssim2_avg, iteration))
+    f.write('-- psnr2_avg: {}, ssim2_avg: {} iter: {}\n'.format(psnr2_avg, ssim2_avg, iteration))
     print('average metric saved.')
     f.close()
 
@@ -172,7 +172,7 @@ if __name__ == '__main__':
     # parser.add_argument('--resolutions', type=str_list, default=['10000_poisson', '30000_poisson', '50000_poisson'])
     # parser.add_argument('--noise_min', type=float, default=0.005)
     # parser.add_argument('--noise_max', type=float, default=0.020)
-    parser.add_argument('--batch_size', type=int, default=1)
+    parser.add_argument('--batch_size', type=int, default=24)
     parser.add_argument('--num_workers', type=int, default=4)
     # parser.add_argument('--aug_rotate', type=eval, default=True, choices=[True, False])
     ## Model architecture
@@ -182,18 +182,18 @@ if __name__ == '__main__':
     parser.add_argument('--weight_decay', type=float, default=0)
     # parser.add_argument('--max_grad_norm', type=float, default=float("inf"))
     ## Training
-    parser.add_argument('--device', type=str, default='0')
+    parser.add_argument('--gpu_id', type=str, default='0')
     parser.add_argument('--iterations', type=int, default=500000)
     parser.add_argument('--exp_name', type=str, default='baseline')
     args = parser.parse_args()
 
-    os.environ["CUDA_VISIBLE_DEVICES"]=args.device
+    os.environ["CUDA_VISIBLE_DEVICES"]=args.gpu_id
 
     opt={'base_lr':1e-4}
     # opt['batch_size'] = 1 # default = 24
     # opt['iterations'] = 500000
 
-    metric_average_file = 'result/metric_average.txt'
+    metric_average_file = 'result/%s_metric_average.txt' % args.exp_name
     # These are folders
     save_weights_file = 'result/weights'
     save_images_file = 'result/images'
@@ -207,12 +207,12 @@ if __name__ == '__main__':
         os.makedirs(save_csv_file)
 
     # load random image paths
-    train_c_path = np.load('./random_path_list/train/train_c_path.npy')[:10]
-    train_m_path = np.load('./random_path_list/train/train_m_path.npy')[:10]
-    train_rgb_path = np.load('./random_path_list/train/train_rgb_path.npy')[:10]
-    test_c_path = np.load('./random_path_list/test/test_c_path.npy')[:10]
-    test_m_path = np.load('./random_path_list/test/test_m_path.npy')[:10]
-    test_rgb_path = np.load('./random_path_list/test/test_rgb_path.npy')[:10]
+    train_c_path = np.load('./random_path_list/train/train_c_path.npy')
+    train_m_path = np.load('./random_path_list/train/train_m_path.npy')
+    train_rgb_path = np.load('./random_path_list/train/train_rgb_path.npy')
+    test_c_path = np.load('./random_path_list/test/test_c_path.npy')
+    test_m_path = np.load('./random_path_list/test/test_m_path.npy')
+    test_rgb_path = np.load('./random_path_list/test/test_rgb_path.npy')
 
     print('train data: %d pairs'%len(train_c_path))
     print('test data: %d pairs'%len(test_c_path))
@@ -292,12 +292,12 @@ if __name__ == '__main__':
                 metrics.append('{:.5f},{:.5f}'.format(np.mean(psnr_rgb), np.mean(ssim_rgb)))
                 iter_list.append(iter_num)
                 iter_LR.append(optimizer.param_groups[0]['lr'])
-                np.savetxt(os.path.join(save_csv_file, 'train_curve_{s}.csv'%args.exp_name), [p for p in zip(iter_list, iter_LR, loss_list, metrics)], delimiter=',', fmt='%s')
+                np.savetxt(os.path.join(save_csv_file, '%s_train_curve.csv'%args.exp_name), [p for p in zip(iter_list, iter_LR, loss_list, metrics)], delimiter=',', fmt='%s')
 
             # save checkpoint every 20000 times, make adjustments accordingly
             if iter_num % 20000 == 0:
-                torch.save({'model': model.state_dict()}, os.path.join(save_weights_file, 'weights_{}.pth'.format(iter_num)))
+                torch.save({'model': model.state_dict()}, os.path.join(save_weights_file, '{}_weights_{}.pth'.format(args.exp_name, iter_num)))
                 print('model saved......')
             # run test during training, more CPU ram and GPU memory needed.
             if iter_num % 40000 == 0:
-                run_test(model, dataloader_test, iter_num, save_images_file, save_csv_file, metric_average_file)
+                run_test(model, dataloader_test, iter_num, save_images_file, save_csv_file, metric_average_file, exp_name = args.exp_name)
