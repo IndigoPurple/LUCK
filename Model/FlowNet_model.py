@@ -322,7 +322,7 @@ class ABFlowNet(nn.Module):
             self.deconv0 = leaky_deconv(130, 64)
 
             # in_ch = 3 + 64 + 2 = 69
-            self.concat0_conv1 = conv_activation(67, 16, kernel_size=7, stride=1, padding=3, activation='selu',
+            self.concat0_conv1 = conv_activation(70, 16, kernel_size=7, stride=1, padding=3, activation='selu',
                                                  init_type='w_init')
             self.concat0_conv2 = conv_activation(16, 16, kernel_size=7, stride=1, padding=3, activation='selu',
                                                  init_type='w_init')
