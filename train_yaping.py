@@ -11,7 +11,7 @@ import tqdm
 import random
 import imageio
 
-from network import baseline, our_Net
+from network import baseline, abflow
 
 # Dataloader define
 def image_read(train_c_path, train_m_path, train_rgb_path):
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     # parser.add_argument('--resolutions', type=str_list, default=['10000_poisson', '30000_poisson', '50000_poisson'])
     # parser.add_argument('--noise_min', type=float, default=0.005)
     # parser.add_argument('--noise_max', type=float, default=0.020)
-    parser.add_argument('--batch_size', type=int, default=1)
+    parser.add_argument('--batch_size', type=int, default=24)
     parser.add_argument('--num_workers', type=int, default=4)
     # parser.add_argument('--aug_rotate', type=eval, default=True, choices=[True, False])
     ## Model architecture
@@ -232,6 +232,8 @@ if __name__ == '__main__':
 
     if args.net == 'baseline':
         model = baseline()
+    elif args.net == 'abflow':
+        model = abflow()
     print(model)
     # checkpoint = torch.load(save_weights_file + '/weights_120000.pth')
     checkpoint = torch.load(save_weights_file + '/MCR_weights_280000.pth')

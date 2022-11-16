@@ -1,6 +1,9 @@
 import torch
 import torch.nn as nn
 from ptflops import get_model_complexity_info
+# from Model.net_utils import *
+from Model.FlowNet_model import *
+from Model.Backward_warp_layer import Backward_warp
 
 class CALayer(nn.Module):
     """
@@ -271,3 +274,40 @@ class baseline(nn.Module):
 # ops, params = get_model_complexity_info(model, (1, 512, 512), as_strings=True,
 #                                         print_per_layer_stat=True, verbose=True)
 # print(ops, params)
+
+class abflow(nn.Module):
+
+    def __init__(self):
+        super(abflow, self).__init__()
+
+        self.up2 = nn.PixelShuffle(2)
+        # self.lrelu = nn.LeakyReLU(0.2, inplace=False)
+        # self.DBF = DBF_Module()
+        self.DBLE = DBLE_Module()
+        self.FlowNet = ABFlowNet(2)
+        self.Backward_warp = Backward_warp()
+
+    def forward(self, color, mono):
+
+        # mono_out = self.DBF(x)
+
+        flow = self.FlowNet(color, mono)
+        warp_mono = self.Backward_warp(mono, flow)
+
+        DBLE_color = downshuffle(color,2)
+        DBLE_mono = downshuffle(warp_mono,2)
+
+
+        DBLE_out = self.DBLE(DBLE_color, DBLE_mono)
+        RGB_out = self.up2(DBLE_out)
+
+        return RGB_out
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                m.weight.data.normal_(0.0, 0.02)
+                if m.bias is not None:
+                    m.bias.data.normal_(0.0, 0.02)
+            if isinstance(m, nn.ConvTranspose2d):
+                m.weight.data.normal_(0.0, 0.02)
