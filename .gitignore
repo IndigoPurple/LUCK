@@ -1,0 +1,6 @@
+##ignore those files##
+.idea
+__pycache__/
+.log
+*.pth
+Mono_Colored_RAW_Paired_DATASET*
