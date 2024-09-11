@@ -1,4 +1,4 @@
-name: py37
+name: luck
 channels:
   - pytorch
   - conda-forge
