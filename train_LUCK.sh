@@ -1,4 +1,4 @@
-python train_yaping.py  \
+python train_luck.py  \
 --net abflow \
 --batch_size 24  \
 --exp_name abflow_Nov16 \
